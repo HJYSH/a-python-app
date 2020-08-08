@@ -7,7 +7,7 @@ import markdown
 from aiohttp import web
 from coroweb import get, post
 ## 分页管理以及调取API时的错误信息
-from apis import Page, APIValueError, APIResourceNotFoundError
+from apis import Page, APIValueError, APIResourceNotFoundError, APIPermissionError, APIError
 from models import User, Comment, Blog, next_id
 from config import configs
 
@@ -118,7 +118,7 @@ async def authenticate(*, email, password):
     sha1 = hashlib.sha1()
     sha1.update(user.id.encode('utf-8'))
     sha1.update(b':')
-    sha1.update(passowrd.encode('utf-8'))
+    sha1.update(password.encode('utf-8'))
     if user.passowrd != sha1.hexdigest():
         raise APIValueError('password', 'Invalid password.')
     # authenticate ok, set cookie:
@@ -222,7 +222,7 @@ async def api_get_users(*, page='1'):
         return dict(page=p, users=())
     users = await User.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
     for u in users:
-        u.passwd = '******'
+        u.password = '******'
     return dict(page=p, users=users)
 
 ## 定义EMAIL和HASH的格式规范
@@ -231,19 +231,19 @@ _RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
 
 ## 用户注册API
 @post('/api/users')
-async def api_register_user(*, email, name, passwd):
+async def api_register_user(*, email, name, password):
     if not name or not name.strip():
         raise APIValueError('name')
     if not email or not _RE_EMAIL.match(email):
         raise APIValueError('email')
-    if not passwd or not _RE_SHA1.match(passwd):
-        raise APIValueError('passwd')
+    if not password or not _RE_SHA1.match(password):
+        raise APIValueError('password')
     users = await User.findAll('email=?', [email])
     if len(users) > 0:
         raise APIError('register:failed', 'email', 'Email is already in use.')
     uid = next_id()
-    sha1_passwd = '%s:%s' % (uid, passwd)
-    user = User(id=uid, name=name.strip(), email=email, passwd=hashlib.sha1(sha1_passwd.encode('utf-8')).hexdigest(), image='http://www.gravatar.com/avatar/%s?d=mm&s=120' % hashlib.md5(email.encode('utf-8')).hexdigest())
+    sha1_password = '%s:%s' % (uid, password)
+    user = User(id=uid, name=name.strip(), email=email, password=hashlib.sha1(sha1_password.encode('utf-8')).hexdigest(), image='http://www.gravatar.com/avatar/%s?d=mm&s=120' % hashlib.md5(email.encode('utf-8')).hexdigest())
     await user.save()
     # make session cookie:
     r = web.Response()
