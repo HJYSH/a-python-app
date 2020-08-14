@@ -135,7 +135,7 @@ def manage():
     return 'redirect:/manage/comments'
 
 ## 评论管理页面
-@get('manage/comments')
+@get('/manage/comments')
 def manage_comments(*, page='1'):
     return {
         '__template__': 'manage_comments.html',
